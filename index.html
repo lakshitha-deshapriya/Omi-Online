@@ -1,0 +1,283 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Omi Online</title>
+<style>
+div.position {
+    background-color: #81BEF7;
+	width:80px;height:100px;padding:10px;border:1px solid #aaaaaa;
+	display:inline-block;
+}
+html, body {
+    background: url('kwallpaper.png') no-repeat fixed center center;
+    background-size: cover;
+    font-family: Montserrat;
+}
+.login-block {
+    width: 320px;
+    padding: 20px;
+    background: #fff;
+    border-radius: 5px;
+    border-top: 5px solid #0066ff;
+    margin: 0 auto;
+}
+
+.login-block h1 {
+    text-align: center;
+    color: #000;
+    font-size: 18px;
+    text-transform: uppercase;
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+.login-block input {
+    width: 100%;
+    height: 42px;
+    box-sizing: border-box;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    margin-bottom: 20px;
+    font-size: 14px;
+    font-family: Montserrat;
+    padding: 0 20px 0 50px;
+    outline: none;
+}
+
+.login-block input:active, .login-block input:focus {
+    border: 1px solid #ff656c;
+}
+
+.login-block button {
+    width: 100%;
+    height: 40px;
+    background: #000;
+    box-sizing: border-box;
+    border-radius: 5px;
+    border: 1px solid #0066ff;
+    color: #0489B1;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 14px;
+    font-family: Montserrat;
+    outline: none;
+    cursor: pointer;
+}
+
+.login-block button:hover {
+    background: #0489B1;
+}
+.head {
+
+font-family: Montserrat;
+padding: 50px;
+text-align: center;
+
+}
+
+</style>
+<script src="knockout-3.4.0.js"></script>
+<script src="jquery-2.2.3.min.js"></script>
+</head>
+<body>
+
+<script>
+/*   
+   ----  JSON Structure to update the UI  ----
+   
+   Following fields should be included in the JSON string to 
+   update the view properly
+   
+    cards -> an array of card objects representing the cards 
+            in the players hand. Each card object should have 
+			an image field with the file name of the card image.
+			
+	card1 -> String showing filename of the card played by each player.
+	card2 -> String showing filename of the card played by each player.
+	card3 -> String showing filename of the card played by each player.
+    mycard ->  String showing filename of the card played by current player.
+	showHand -> Boolean value stating whether the GUI should show cards in the players hand.
+	showCards -> Boolean value stating whether the GUI should show the played cards. (card1, card2, card3, & mycard)
+	message -> The status message that should be shown.
+	
+   These are some sample JSONs to represent the user interface.
+   You should create the JSON for each player in the server and 
+   send using AJAX poling or SSE or some other way.
+   Then call the Update Function with that JSON string to update the UI.   
+*/
+
+var UI = '{"card1":"", "card2":"","card3":"", "mycard":"","showHand" : true, "showCards" : true , "message" : "Welcome to Game"}';
+
+</script>
+
+
+
+<span data-bind="text: message"></span> 
+
+<!--Enter game-->
+<br/>
+<div class="login-block" data-bind="visible: NotEntered">
+	<form id="form">
+	  Enter your name : <input type="text" id="player" name="name"><br>
+  	<input type="button" onclick="viewModel.NotEntered(false);addPlayers(document.getElementById('player').value)" value="Enter game">
+</form>
+</div>
+
+<!--cards-->
+<div class="login-block" data-bind="visible: shouldShowPlayedCards">
+	<div class = "position" style = "margin-left: 110px;" >
+	<img data-bind="attr: { src: card2 }" >
+	</div>
+
+	<br/>
+	
+	<div class = "position">
+	<img data-bind="attr: { src: card1 }">
+	</div>
+
+
+
+	<div class = "position" style = "margin-left: 110px;">
+	<img data-bind="attr: { src: card3 }">
+	</div>
+
+	<br/>
+
+	<!-- Player's Card -->
+	<div class = "position" style = "margin-left: 110px;">
+	<img data-bind="attr: { src: mycard }">
+	</div>
+	
+</div> 
+
+<br/>
+	<div data-bind="foreach: cards , visible: shouldShowHand">
+		<img data-bind="attr: { src: image }, click: function(data, event) { update_card_view(image)}"/>
+	</div>
+<br/>
+
+<!-- TODO: These should be done automatically -->
+
+<script>
+
+// This is a simple *viewmodel* - JavaScript that defines the data and behavior of your UI
+function AppViewModel() {
+    var self = this;
+    self.cards = ko.observableArray([
+        { image: 'cards/0_1.png' },
+        { image: 'cards/1_2.png' },
+        { image: 'cards/0_3.png' }
+    ])
+	self.card1 = ko.observable("cards/0_1.png");
+	self.card2 = ko.observable("cards/0_1.png");
+	self.card3 = ko.observable("cards/0_1.png");
+	self.mycard = ko.observable("cards/0_1.png");
+	self.shouldShowHand = ko.observable(false);
+	self.shouldShowPlayedCards = ko.observable(false);	
+	self.message = ko.observable("");
+	self.NotEntered = ko.observable(true);
+}
+
+viewModel = new AppViewModel();
+ko.applyBindings(viewModel);
+
+/*update the viewModel*/
+function Update(statusJSON)
+{
+	var parsed = JSON.parse(statusJSON);
+	viewModel.cards(parsed.cards);
+	viewModel.card1(parsed.card1);
+	viewModel.card2(parsed.card2);
+	viewModel.card3(parsed.card3);
+	viewModel.mycard(parsed.mycard);
+	viewModel.shouldShowHand(parsed.showHand);
+	viewModel.shouldShowPlayedCards(parsed.showCards);
+	viewModel.message(parsed.message);
+}
+
+//adding players and distributing cards
+function addPlayers(player){
+	var value,obj,UIjson;
+	
+	$.ajax({
+	    type: "GET",
+	    url: "Omi",
+	    contentType: "application/json", 
+		dataType: 'json',
+	    data: {
+			type: "adding_Players",
+			name: JSON.stringify(player)
+	    },
+		success: function(response) {
+			value = JSON.stringify(response);
+			obj = JSON.parse(value);
+			UIjson = JSON.parse(UI);
+			UIjson.cards = obj.cards;
+			UI = JSON.stringify(UIjson);
+			Update(JSON.stringify(UIjson));
+			update_played_cards();
+	    },
+	    error: function(data) {
+			alert('4 Players Are Already Connected');
+    	}
+	});
+}
+
+//updating the cards view
+function update_card_view(card){
+	var value, obj, UIjson;
+	$.ajax({
+	    type: "GET",
+	    url: "Omi",
+	    contentType: "application/json", 
+		data: {
+			type: "remove_cards",
+			card: JSON.stringify(card)
+	    },
+	    success: function(response) {
+			value = JSON.stringify(response);
+			obj = JSON.parse(value);
+			UIjson = JSON.parse(UI);
+			UIjson.cards = obj.cards;
+			UIjson.mycard = "cards/0_1.png";
+			UI = JSON.stringify(UIjson);
+			Update(JSON.stringify(UIjson));
+		},
+	    error: function(data) {
+			alert('Wait until other player plays');
+    	}
+	});
+}
+
+//update played cards
+function update_played_cards(){
+	var value, obj, UIjson;
+	setTimeout(function() {
+	$.ajax({ 
+		type: "GET",
+		url: "Omi",
+		contentType: "application/json", 
+			
+		data: {
+			type: "update"
+	    },
+		dataType: "json",
+			
+		success: function(data) {
+			value = JSON.stringify(data);
+			obj = JSON.parse(value);
+			UIjson = JSON.parse(UI);
+			UI = JSON.stringify(UIjson);
+			Update(JSON.stringify(UIjson));
+		},
+		error: function(data) {
+			alert('Error when updating');
+		},
+		complete: update_played_cards })
+   	}, 1000);
+}
+
+</script>
+
+</body>
+</html>
